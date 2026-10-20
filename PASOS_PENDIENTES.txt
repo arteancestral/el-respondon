@@ -1,0 +1,12 @@
+EL RESPONDÓN - Integración con Supabase
+
+La URL y la clave publicable ya están configuradas en online-config.js.
+
+1. Publicar los archivos sueltos en la raíz del repositorio GitHub arteancestral/el-respondon (no subir ZIP como único archivo).
+2. Activar GitHub Pages: Settings > Pages > Deploy from a branch > main > /(root).
+3. En Supabase Authentication > URL Configuration, establecer Site URL https://arteancestral.github.io/el-respondon/ y añadir esa misma URL a Redirect URLs.
+4. Probar con una cuenta nueva, confirmar el email y verificar que el perfil aparece en public.perfiles.
+5. Probar presencia online en dos navegadores con cuentas diferentes. Puede requerir políticas de Supabase Realtime y revisar errores de la consola.
+6. El multijugador real y el envio de sugerencias/contacto NO estan implementados.
+
+No publicar claves secretas ni datos personales en el repositorio.

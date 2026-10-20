@@ -1,0 +1,14 @@
+EL RESPONDÓN — revisión previa a GitHub Pages (20/10/2026)
+
+1. Subir SOLO index.html, jugar.html, portada.png, auth.js, online.js, online-config.js y .nojekyll al directorio raíz del repositorio público.
+2. En online-config.js colocar la URL del proyecto y la clave PÚBLICA publishable/anon de Supabase. NUNCA service_role, secret keys ni contraseñas.
+3. GitHub Settings > Pages > Deploy from a branch > main > /(root).
+4. En Supabase Authentication > URL Configuration, Site URL = https://arteancestral.github.io/el-respondon/ y añadir exactamente la misma URL en Redirect URLs.
+5. La tabla public.perfiles y el trigger public.crear_perfil_jugador deben existir (SQL ejecutado en la conversación). No ejecutar el archivo SUPABASE_CONFIGURACION.sql anterior: crea OTRA tabla incompatible (player_profiles).
+6. Para ver jugadores reales, configurar Supabase Realtime para permitir la presencia en el canal respondon-lobby; verificar políticas de acceso apropiadas y probar con dos sesiones. La presencia muestra únicamente usuarios que pulsan Conectarme.
+7. Probar registro con correo real, confirmación, inicio y cierre de sesión, y presencia con dos navegadores.
+8. El juego individual es el módulo HTML previo. Cámara y micrófono requieren permisos del navegador y HTTPS.
+9. AÚN NO IMPLEMENTADO: emparejamiento, salas privadas, partidas multijugador sincronizadas, clasificación global, envío de formularios Sugerencias y Contáctanos. Sus botones se muestran como pendientes, no simulan funcionalidad.
+10. Para exportar a Excel, utilizar el panel privado de Supabase y exportar CSV; no alojar datos personales ni contraseñas en GitHub.
+
+REVISIÓN: comprobación estática de archivos, referencias y sintaxis JS; no es una prueba extremo a extremo en un servidor desplegado.
