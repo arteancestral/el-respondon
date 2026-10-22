@@ -4,6 +4,10 @@ export function prepararVideollamada({client, user, getRoom, getState}) {
  const note=message=>{$('videoStatus').textContent=message};
  let pc=null,local=null,remoteId=null,connected=false,readyRemote=false,offerSent=false,after=0;
  let queued=[],loop=null,working=false,roomBefore='',audioOn=true,videoOn=true;
+ let remoteStream=new MediaStream();
+ const remoteAudio=document.createElement('audio');remoteAudio.autoplay=true;remoteAudio.playsInline=true;remoteAudio.controls=false;document.body.appendChild(remoteAudio);
+ const playAudio=async()=>{if(!remoteAudio.srcObject)return;try{remoteAudio.muted=false;remoteAudio.volume=1;await remoteAudio.play();$('audioUnlock').classList.add('hide')}catch(e){$('audioUnlock').classList.remove('hide');note('Vídeo conectado. Pulsa «🔊 Activar sonido del rival» para escuchar.')}};
+ $('audioUnlock').onclick=playAudio;
  const rtcConfig={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
  async function send(kind,payload={}) {
   if(!remoteId||!getRoom())return;
@@ -15,7 +19,13 @@ export function prepararVideollamada({client, user, getRoom, getState}) {
   if(pc)return pc;
   pc=new RTCPeerConnection(rtcConfig);
   local?.getTracks().forEach(track=>pc.addTrack(track,local));
-  pc.ontrack=e=>{const video=$('rivalCam');video.srcObject=e.streams[0];video.play().catch(()=>{});note('Videollamada conectada.');};
+  pc.ontrack=e=>{
+   const track=e.track;if(!remoteStream.getTracks().some(t=>t.id===track.id))remoteStream.addTrack(track);
+   const video=$('rivalCam');video.muted=true;video.srcObject=remoteStream;video.play().catch(()=>{});
+   remoteAudio.srcObject=remoteStream;
+   if(track.kind==='audio'){playAudio();track.onunmute=playAudio;}
+   note('Videollamada conectada.');
+  };
   pc.onicecandidate=e=>{if(e.candidate)send('ice',{candidate:e.candidate.toJSON()}).catch(err=>note(err.message))};
   pc.onconnectionstatechange=()=>{
    if(pc?.connectionState==='connected')note('Videollamada conectada.');
@@ -38,7 +48,7 @@ export function prepararVideollamada({client, user, getRoom, getState}) {
   if(m.kind==='bye'){readyRemote=false;offerSent=false;closePeer();note('El contrincante desconectó su cámara y micrófono.');}
  }
  function isHost(){const players=getState()?.players||[];return players.find(p=>p.id===user.id)?.seat===1}
- function closePeer(){if(pc){pc.ontrack=null;pc.onicecandidate=null;pc.close();pc=null}$('rivalCam').srcObject=null;queued=[];}
+ function closePeer(){remoteAudio.pause();remoteAudio.srcObject=null;remoteStream=new MediaStream();$('audioUnlock').classList.add('hide');if(pc){pc.ontrack=null;pc.onicecandidate=null;pc.close();pc=null}$('rivalCam').srcObject=null;queued=[];}
  async function poll(){if(working||!getRoom())return;working=true;
   try{
    const room=getRoom();if(room!==roomBefore){roomBefore=room;after=0;remoteId=null;readyRemote=false;offerSent=false;}
@@ -59,6 +69,8 @@ export function prepararVideollamada({client, user, getRoom, getState}) {
    $('cameraToggle').textContent='📷 Apagar cámara';$('micToggle').textContent='🎤 Silenciar';
    $('callToggle').textContent='📞 Colgar';
    createPeer();
+   // La pulsación que inicia la llamada habilita la reproducción de audio en navegadores móviles.
+   remoteAudio.muted=false;
    const players=getState()?.players||[];remoteId=players.find(p=>p.id!==user.id)?.id||null;
    if(remoteId)await send('ready');
    if(isHost()&&readyRemote)await makeOffer();
