@@ -5,9 +5,31 @@ export function prepararVideollamada({client, user, getRoom, getState}) {
  let pc=null,local=null,remoteId=null,connected=false,readyRemote=false,offerSent=false,after=0;
  let queued=[],loop=null,working=false,roomBefore='',audioOn=true,videoOn=true;
  let remoteStream=new MediaStream();
- const remoteAudio=document.createElement('audio');remoteAudio.autoplay=true;remoteAudio.playsInline=true;remoteAudio.controls=false;document.body.appendChild(remoteAudio);
- const playAudio=async()=>{if(!remoteAudio.srcObject)return;try{remoteAudio.muted=false;remoteAudio.volume=1;await remoteAudio.play();$('audioUnlock').classList.add('hide')}catch(e){$('audioUnlock').classList.remove('hide');note('Vídeo conectado. Pulsa «🔊 Activar sonido del rival» para escuchar.')}};
- $('audioUnlock').onclick=playAudio;
+ const unlockButton=$('audioUnlock');
+ const remoteAudio=document.createElement('audio');
+ remoteAudio.id='respondonRemoteAudio';remoteAudio.autoplay=true;remoteAudio.playsInline=true;
+ remoteAudio.preload='auto';remoteAudio.controls=false;remoteAudio.muted=false;remoteAudio.volume=1;
+ document.body.appendChild(remoteAudio);
+ let remoteAudioReady=false;
+ const showUnlock=()=>{if(remoteAudioReady)unlockButton.classList.remove('hide')};
+ const playAudio=async()=>{
+  const tracks=remoteStream.getAudioTracks();
+  if(!tracks.length){note('Conexión de vídeo activa, pero todavía no llega una pista de audio del rival.');return}
+  remoteAudio.srcObject=remoteStream;
+  remoteAudio.muted=false;remoteAudio.volume=1;
+  try{
+   await remoteAudio.play();
+   unlockButton.classList.add('hide');
+   note('Audio del rival activado. Si no se escucha, revisa el volumen y el micrófono del otro dispositivo.');
+  }catch(e){
+   showUnlock();
+   console.warn('EL RESPONDÓN: reproducción de audio bloqueada:',e);
+   note('Vídeo conectado. Pulsa «🔊 Activar sonido del rival» para habilitar el audio.');
+  }
+ };
+ unlockButton.onclick=playAudio;
+ remoteAudio.addEventListener('playing',()=>{unlockButton.classList.add('hide')});
+ remoteAudio.addEventListener('error',()=>{showUnlock();note('No se pudo reproducir el audio del rival.')});
  const rtcConfig={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
  async function send(kind,payload={}) {
   if(!remoteId||!getRoom())return;
@@ -20,11 +42,21 @@ export function prepararVideollamada({client, user, getRoom, getState}) {
   pc=new RTCPeerConnection(rtcConfig);
   local?.getTracks().forEach(track=>pc.addTrack(track,local));
   pc.ontrack=e=>{
-   const track=e.track;if(!remoteStream.getTracks().some(t=>t.id===track.id))remoteStream.addTrack(track);
-   const video=$('rivalCam');video.muted=true;video.srcObject=remoteStream;video.play().catch(()=>{});
-   remoteAudio.srcObject=remoteStream;
-   if(track.kind==='audio'){playAudio();track.onunmute=playAudio;}
-   note('Videollamada conectada.');
+   const track=e.track;
+   if(!remoteStream.getTracks().some(t=>t.id===track.id))remoteStream.addTrack(track);
+   if(track.kind==='video'){
+    const video=$('rivalCam');video.muted=true;video.srcObject=remoteStream;
+    video.play().catch(()=>{});
+   }
+   if(track.kind==='audio'){
+    remoteAudioReady=true;
+    remoteAudio.srcObject=remoteStream;
+    showUnlock(); // Permite iniciar el sonido mediante un gesto real del usuario.
+    playAudio(); // Intenta la reproducción automática si el navegador lo permite.
+    track.onunmute=()=>{showUnlock();playAudio()};
+    track.onmute=()=>{showUnlock();note('La pista de audio del rival está temporalmente silenciada.')} ;
+   }
+   if(track.kind==='video')note('Vídeo conectado. Esperando audio del rival…');
   };
   pc.onicecandidate=e=>{if(e.candidate)send('ice',{candidate:e.candidate.toJSON()}).catch(err=>note(err.message))};
   pc.onconnectionstatechange=()=>{
@@ -48,7 +80,7 @@ export function prepararVideollamada({client, user, getRoom, getState}) {
   if(m.kind==='bye'){readyRemote=false;offerSent=false;closePeer();note('El contrincante desconectó su cámara y micrófono.');}
  }
  function isHost(){const players=getState()?.players||[];return players.find(p=>p.id===user.id)?.seat===1}
- function closePeer(){remoteAudio.pause();remoteAudio.srcObject=null;remoteStream=new MediaStream();$('audioUnlock').classList.add('hide');if(pc){pc.ontrack=null;pc.onicecandidate=null;pc.close();pc=null}$('rivalCam').srcObject=null;queued=[];}
+ function closePeer(){remoteAudioReady=false;remoteAudio.pause();remoteAudio.srcObject=null;remoteStream=new MediaStream();$('audioUnlock').classList.add('hide');if(pc){pc.ontrack=null;pc.onicecandidate=null;pc.close();pc=null}$('rivalCam').srcObject=null;queued=[];}
  async function poll(){if(working||!getRoom())return;working=true;
   try{
    const room=getRoom();if(room!==roomBefore){roomBefore=room;after=0;remoteId=null;readyRemote=false;offerSent=false;}

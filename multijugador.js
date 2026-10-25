@@ -1,4 +1,4 @@
-import {prepararVideollamada} from './videollamada.js?v=audio1';
+import {prepararVideollamada} from './videollamada.js?v=audio2';
 import {SUPABASE_URL,SUPABASE_ANON_KEY} from './online-config.js';
 import {BANK} from './banco-multi.js';
 const $=id=>document.getElementById(id),ABC=[...'ABCDEFGHIJKLMNÑOPQRSTUVWXYZ'];
